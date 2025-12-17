@@ -145,11 +145,21 @@ class OCREngine:
             line_text = line.text
             full_text_parts.append(line_text)
 
+            if line.words:
+                x = int(line.words[0].bounding_rect.x)
+                y = int(line.words[0].bounding_rect.y)
+                width = int(sum(w.bounding_rect.width for w in line.words))
+                height = int(max(w.bounding_rect.height for w in line.words))
+            else:
+                x, y, width, height = 0, 0, 0, 0
+
             line_bounds = {
-                "x": int(line.words[0].bounding_rect.x) if line.words else 0,
-                "y": int(line.words[0].bounding_rect.y) if line.words else 0,
-                "width": int(sum(w.bounding_rect.width for w in line.words)),
-                "height": int(max(w.bounding_rect.height for w in line.words)) if line.words else 0
+                "x": x,
+                "y": y,
+                "width": width,
+                "height": height,
+                "center_x": x + width // 2,
+                "center_y": y + height // 2
             }
             lines.append({"text": line_text, "bounds": line_bounds})
 
