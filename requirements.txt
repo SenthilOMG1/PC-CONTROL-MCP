@@ -1,0 +1,35 @@
+# MCP SDK
+mcp>=1.0.0
+
+# Screen capture (uses Windows Desktop Duplication API - FAST)
+mss>=9.0.0
+
+# UI Automation (Windows UI Automation COM bindings)
+uiautomation>=2.0.18
+
+# Input simulation
+pynput>=1.7.6
+
+# Image processing
+Pillow>=10.0.0
+
+# Win32 API for accurate window bounds
+pywin32>=306
+
+# OCR - Windows Runtime OCR API (built-in, fast, GPU-accelerated)
+# Requires Windows 10/11
+winrt-runtime>=2.0.0
+winrt-Windows.Media.Ocr>=2.0.0
+winrt-Windows.Graphics.Imaging>=2.0.0
+winrt-Windows.Storage.Streams>=2.0.0
+winrt-Windows.Globalization>=2.0.0
+
+# Computer Vision - Template matching, screen diff
+opencv-python>=4.8.0
+numpy>=1.24.0
+
+# Async support
+anyio>=4.0.0
+
+# Optional: Tesseract OCR fallback (requires Tesseract installed)
+# pytesseract>=0.3.10
