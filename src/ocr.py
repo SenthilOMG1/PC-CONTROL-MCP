@@ -87,7 +87,17 @@ class OCREngine:
             }
         """
         if not self._available:
-            return {"error": "OCR not available", "text": "", "words": [], "lines": []}
+            return {
+                "error": "OCR not available. Restart Claude Code after installing dependencies.",
+                "text": "",
+                "words": [],
+                "lines": [],
+                "debug": {
+                    "has_winrt": HAS_WINRT_OCR,
+                    "has_tesseract": HAS_TESSERACT,
+                    "engine_exists": self._engine is not None
+                }
+            }
 
         try:
             if HAS_WINRT_OCR and self._engine:
@@ -95,7 +105,14 @@ class OCREngine:
             elif HAS_TESSERACT:
                 return self._recognize_tesseract(image_data, region)
         except Exception as e:
-            return {"error": str(e), "text": "", "words": [], "lines": []}
+            import traceback
+            return {
+                "error": str(e),
+                "text": "",
+                "words": [],
+                "lines": [],
+                "traceback": traceback.format_exc()
+            }
 
         return {"error": "No OCR engine available", "text": "", "words": [], "lines": []}
 
