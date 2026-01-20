@@ -40,6 +40,12 @@ try:
     HAS_VISION = True
 except ImportError:
     HAS_VISION = False
+try:
+    from browser import get_browser, BrowserAutomation
+    HAS_BROWSER = True
+except ImportError:
+    HAS_BROWSER = False
+
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -697,6 +703,163 @@ Example: wait_for_screen_change(region={...}, threshold=0.05)""",
                         "default": 0.1
                     }
                 }
+        # =================================================================
+        # BROWSER AUTOMATION TOOLS (CDP) - Direct Chrome control!
+        # =================================================================
+        Tool(
+            name="connect_browser",
+            description="""Connect to Chrome browser with remote debugging.
+
+Chrome must be started with: --remote-debugging-port=9222
+Or use: chrome.exe --remote-debugging-port=9222 --user-data-dir=C:/chrome-debug
+
+This enables FULL control over browser content - DOM, elements, JS execution!""",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "target_url": {
+                        "type": "string",
+                        "description": "Optional: URL to find specific tab"
+                    },
+                    "port": {
+                        "type": "integer",
+                        "description": "Debug port (default: 9222)",
+                        "default": 9222
+                    }
+                }
+            }
+        ),
+
+        Tool(
+            name="get_browser_elements",
+            description="""Get ALL interactive elements from the browser page.
+
+THE KILLER FEATURE! Returns every clickable element with:
+- Exact bounds (x, y, width, height, center)
+- Role (button, link, textbox, checkbox, etc.)
+- Name/text
+- State (enabled, focused)
+
+Much better than OCR for browsers!""",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "max_elements": {
+                        "type": "integer",
+                        "description": "Maximum elements to return",
+                        "default": 100
+                    }
+                }
+            }
+        ),
+
+        Tool(
+            name="click_browser_element",
+            description="""Click an element in the browser by text or role.
+
+Example: click_browser_element(text="Submit")
+Example: click_browser_element(text="Sign In", role="button")
+Example: click_browser_element(selector="#submit-btn")""",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "text": {"type": "string", "description": "Element text to find"},
+                    "role": {"type": "string", "description": "Element role (button, link, etc.)"},
+                    "selector": {"type": "string", "description": "CSS selector"},
+                    "button": {
+                        "type": "string",
+                        "enum": ["left", "right", "middle"],
+                        "default": "left"
+                    },
+                    "double": {"type": "boolean", "default": False}
+                }
+            }
+        ),
+
+        Tool(
+            name="type_in_browser",
+            description="""Type text into a browser element.
+
+Example: type_in_browser(text="Hello World")
+Example: type_in_browser(text="user@email.com", selector="#email")""",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "text": {"type": "string", "description": "Text to type"},
+                    "selector": {"type": "string", "description": "CSS selector for target element"},
+                    "clear_first": {"type": "boolean", "default": True}
+                },
+                "required": ["text"]
+            }
+        ),
+
+        Tool(
+            name="execute_browser_js",
+            description="""Execute JavaScript in the browser page context.
+
+Full access to the page DOM and APIs!
+
+Example: execute_browser_js(script="document.title")
+Example: execute_browser_js(script="document.querySelector('#btn').click()")""",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "script": {"type": "string", "description": "JavaScript to execute"}
+                },
+                "required": ["script"]
+            }
+        ),
+
+        Tool(
+            name="get_page_blueprint",
+            description="""Extract everything needed to recreate/clone a page.
+
+Returns:
+- HTML structure (truncated)
+- All interactive elements
+- Design tokens (colors, fonts)
+- Page metadata
+
+Perfect for understanding and replicating UIs!""",
+            inputSchema={"type": "object", "properties": {}}
+        ),
+
+        Tool(
+            name="get_browser_pages",
+            description="""Get list of all open browser tabs/pages.
+
+Returns tab IDs, URLs, and titles. Useful for finding the right tab to connect to.""",
+            inputSchema={"type": "object", "properties": {}}
+        ),
+
+        Tool(
+            name="browser_navigate",
+            description="Navigate the browser to a URL.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "url": {"type": "string", "description": "URL to navigate to"}
+                },
+                "required": ["url"]
+            }
+        ),
+
+        Tool(
+            name="wait_for_browser_element",
+            description="""Wait for an element to appear in the browser.
+
+Example: wait_for_browser_element(text="Success", timeout=10)""",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "text": {"type": "string", "description": "Element text to wait for"},
+                    "role": {"type": "string", "description": "Element role"},
+                    "selector": {"type": "string", "description": "CSS selector"},
+                    "timeout": {"type": "number", "default": 10.0}
+                }
+            }
+        ),
+
             }
         ),
     ]
@@ -984,6 +1147,106 @@ async def _execute_tool(name: str, args: dict) -> Any:
             poll_interval=args.get("poll_interval", 0.1)
         )
         return result
+    # =================================================================
+    # BROWSER TOOLS (CDP)
+    # =================================================================
+    elif name == "connect_browser":
+        if not HAS_BROWSER:
+            return {"error": "Browser module not available. Install websockets and aiohttp."}
+        browser = get_browser(args.get("port", 9222))
+        result = await browser.connect(target_url=args.get("target_url"))
+        return result
+
+    elif name == "get_browser_elements":
+        if not HAS_BROWSER:
+            return {"error": "Browser module not available."}
+        browser = get_browser()
+        if not browser.connection:
+            return {"error": "Not connected to browser. Use connect_browser first."}
+        elements = await browser.get_interactive_elements()
+        max_elem = args.get("max_elements", 100)
+        return {
+            "count": len(elements),
+            "elements": [e.to_dict() for e in elements[:max_elem]]
+        }
+
+    elif name == "click_browser_element":
+        if not HAS_BROWSER:
+            return {"error": "Browser module not available."}
+        browser = get_browser()
+        if not browser.connection:
+            return {"error": "Not connected to browser. Use connect_browser first."}
+        result = await browser.click_element(
+            text=args.get("text"),
+            role=args.get("role"),
+            selector=args.get("selector"),
+            button=args.get("button", "left"),
+            click_count=2 if args.get("double") else 1
+        )
+        return result
+
+    elif name == "type_in_browser":
+        if not HAS_BROWSER:
+            return {"error": "Browser module not available."}
+        browser = get_browser()
+        if not browser.connection:
+            return {"error": "Not connected to browser. Use connect_browser first."}
+        result = await browser.type_text(
+            text=args["text"],
+            selector=args.get("selector"),
+            clear_first=args.get("clear_first", True)
+        )
+        return result
+
+    elif name == "execute_browser_js":
+        if not HAS_BROWSER:
+            return {"error": "Browser module not available."}
+        browser = get_browser()
+        if not browser.connection:
+            return {"error": "Not connected to browser. Use connect_browser first."}
+        result = await browser.execute_script(args["script"])
+        return result
+
+    elif name == "get_page_blueprint":
+        if not HAS_BROWSER:
+            return {"error": "Browser module not available."}
+        browser = get_browser()
+        if not browser.connection:
+            return {"error": "Not connected to browser. Use connect_browser first."}
+        result = await browser.extract_page_blueprint()
+        return result
+
+    elif name == "get_browser_pages":
+        if not HAS_BROWSER:
+            return {"error": "Browser module not available."}
+        browser = get_browser()
+        pages = await browser.get_pages()
+        return {"pages": [p.to_dict() for p in pages]}
+
+    elif name == "browser_navigate":
+        if not HAS_BROWSER:
+            return {"error": "Browser module not available."}
+        browser = get_browser()
+        if not browser.connection:
+            return {"error": "Not connected to browser. Use connect_browser first."}
+        result = await browser.navigate(args["url"])
+        return result
+
+    elif name == "wait_for_browser_element":
+        if not HAS_BROWSER:
+            return {"error": "Browser module not available."}
+        browser = get_browser()
+        if not browser.connection:
+            return {"error": "Not connected to browser. Use connect_browser first."}
+        result = await browser.wait_for_element(
+            text=args.get("text"),
+            role=args.get("role"),
+            selector=args.get("selector"),
+            timeout=args.get("timeout", 10.0)
+        )
+        return result
+
+
 
     else:
         return {"error": f"Unknown tool: {name}"}

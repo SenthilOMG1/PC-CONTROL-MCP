@@ -33,5 +33,10 @@ numpy>=1.24.0
 # Async support
 anyio>=4.0.0
 
+# Chrome DevTools Protocol (CDP) - Browser automation
+# Enables direct control of Chrome internals (DOM, a11y tree, JS execution)
+websockets>=12.0
+aiohttp>=3.9.0
+
 # Optional: Tesseract OCR fallback (requires Tesseract installed)
 # pytesseract>=0.3.10

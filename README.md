@@ -6,6 +6,7 @@ Works with Claude Code, Cursor, Windsurf, and any MCP-compatible AI assistant.
 
 A powerful MCP server for intelligent PC control using:
 - **UI Automation** - Click elements by name (native Windows apps)
+- **Browser CDP** - Direct Chrome control (DOM, elements, JS execution) ⭐ NEW!
 - **OCR** - Find/click any text on screen (works with browsers!)
 - **Vision** - Template matching, screen change detection
 - **Fast capture** - GPU-accelerated screenshots
@@ -15,10 +16,12 @@ A powerful MCP server for intelligent PC control using:
 | Feature | Old pc-control | claude-pc |
 |---------|---------------|-----------|
 | Click elements | By coordinates (fragile) | By name OR by text (robust) |
-| Browser support | Screenshots only | OCR finds/clicks any text! |
+| Browser support | Screenshots only | **FULL CDP support!** + OCR |
+| Browser elements | None | Get ALL interactive elements! |
+| JavaScript | None | Execute any JS in page! |
+| Page extraction | None | Extract full page blueprint! |
 | Wait for changes | Manual polling | `wait_for_screen_change` |
 | Screen capture | ~200ms | ~50ms (GPU accelerated) |
-| Window info | Basic | Full bounds, process info |
 
 ## Quick Start
 
@@ -35,17 +38,44 @@ Add to `~/.claude.json`:
   "mcpServers": {
     "claude-pc": {
       "type": "stdio",
-      "command": "C:\\Users\\sedric\\claude-pc-mcp\\.venv\\Scripts\\python.exe",
-      "args": ["C:\\Users\\sedric\\claude-pc-mcp\\run.py"]
+      "command": "C:\path\to\claude-pc-mcp\.venv\Scripts\python.exe",
+      "args": ["C:\path\to\claude-pc-mcp\run.py"]
     }
   }
 }
 ```
 
+### For Browser CDP (Chrome Control)
+
+Start Chrome with remote debugging:
+```bash
+chrome.exe --remote-debugging-port=9222
+```
+
+Or for a clean profile:
+```bash
+chrome.exe --remote-debugging-port=9222 --user-data-dir=C:\chrome-debug
+```
+
 ## Tools Overview
 
-### Native App Control (UI Automation)
-Best for: Windows native applications (Notepad, File Explorer, etc.)
+### 🌐 Browser Control (CDP) - NEW!
+**Best for: Chrome/Edge browsers - FULL control over web content!**
+
+| Tool | Description |
+|------|-------------|
+| `connect_browser` | Connect to Chrome with debugging enabled |
+| `get_browser_elements` | Get ALL interactive elements with bounds! |
+| `click_browser_element` | Click element by text/role/selector |
+| `type_in_browser` | Type text into browser elements |
+| `execute_browser_js` | Run JavaScript in page context |
+| `get_page_blueprint` | Extract everything to clone a page |
+| `get_browser_pages` | List all open tabs |
+| `browser_navigate` | Navigate to URL |
+| `wait_for_browser_element` | Wait for element to appear |
+
+### 🖥️ Native App Control (UI Automation)
+**Best for: Windows native applications (Notepad, File Explorer, etc.)**
 
 | Tool | Description |
 |------|-------------|
@@ -55,8 +85,8 @@ Best for: Windows native applications (Notepad, File Explorer, etc.)
 | `get_ui_tree` | Get UI element hierarchy |
 | `wait_for_element` | Wait for element state |
 
-### Browser/Universal Control (OCR)
-Best for: Browsers, web apps, any application with visible text
+### 🔤 Text/Universal Control (OCR)
+**Best for: Any application with visible text (fallback for browsers without CDP)**
 
 | Tool | Description |
 |------|-------------|
@@ -65,15 +95,15 @@ Best for: Browsers, web apps, any application with visible text
 | `get_screen_text` | Extract all visible text |
 | `wait_for_text` | Wait for text to appear/disappear |
 
-### Vision Tools
-For image-based interaction and screen monitoring
+### 👁️ Vision Tools
+**For image-based interaction and screen monitoring**
 
 | Tool | Description |
 |------|-------------|
 | `find_image_on_screen` | Find image/icon using template matching |
 | `wait_for_screen_change` | Wait for screen to update |
 
-### Screen & Input
+### ⌨️ Screen & Input
 | Tool | Description |
 |------|-------------|
 | `capture_screen` | Fast screenshot (50ms) |
@@ -86,66 +116,73 @@ For image-based interaction and screen monitoring
 
 ## Usage Examples
 
-### Click a button in native app
+### 🌐 Browser Automation with CDP (BEST!)
+
 ```python
-# Preferred - by element name
+# 1. Connect to Chrome (must be started with --remote-debugging-port=9222)
+connect_browser()
+
+# 2. Get ALL interactive elements on the page
+get_browser_elements()
+# Returns: buttons, links, inputs with EXACT coordinates!
+
+# 3. Click by element text
+click_browser_element(text="Sign In", role="button")
+
+# 4. Fill a form
+click_browser_element(text="Email")
+type_in_browser(text="user@example.com")
+click_browser_element(text="Password")
+type_in_browser(text="mypassword")
+click_browser_element(text="Log In")
+
+# 5. Execute JavaScript
+execute_browser_js(script="document.title")
+execute_browser_js(script="document.querySelector('#submit').click()")
+
+# 6. Extract page for cloning
+get_page_blueprint()
+# Returns: HTML, elements, design tokens, colors, fonts!
+```
+
+### 🖥️ Native App Control
+
+```python
+# Click a button by name
 click_element(name="Submit", control_type="button")
+
+# Type into a text field
+type_into_element(name="Username", text="myuser")
+
+# Get UI tree to explore
+get_ui_tree(depth=3)
 ```
 
-### Click a button in browser
+### 🔤 OCR Fallback (when CDP not available)
+
 ```python
-# Use OCR - works with any visible text!
+# Find and click any visible text
 click_text(text="Sign In")
-```
 
-### Wait for page load
-```python
-click_text(text="Load Data")
+# Wait for loading to finish
 wait_for_text(text="Loading...", condition="disappear", timeout=30)
 ```
 
-### Wait for any screen change
-```python
-click_at(x=500, y=300)
-wait_for_screen_change(timeout=5)
-```
+## When to Use What
 
-### Fill a form
-```python
-# Native app
-type_into_element(name="Username", text="myuser")
-type_into_element(name="Password", text="mypass")
-click_element(name="Login")
-
-# Browser (using OCR)
-click_text(text="Username")
-type_text(text="myuser")
-send_keys(keys="{TAB}")
-type_text(text="mypass")
-click_text(text="Log in")
-```
-
-## Important Limitations
-
-### UI Automation (find_element, click_element, etc.)
-- **Works great with**: Native Windows apps (Notepad, Explorer, Office, etc.)
-- **Does NOT work with**: Browser internal content (Chrome, Edge, Firefox)
-- Browsers expose only the outer window, not web page elements
-
-### OCR Tools (find_text_on_screen, click_text, etc.)
-- **Works with everything**: Any visible text on screen
-- Slightly slower than UI Automation (~100-200ms for OCR)
-- Requires Windows 10/11 for built-in OCR
-
-### When to use what
-1. **Native Windows app** -> Use `click_element`, `find_element`
-2. **Browser/web content** -> Use `click_text`, `find_text_on_screen`
-3. **Unknown/mixed** -> Try OCR tools (they work everywhere)
+| Scenario | Best Tool |
+|----------|-----------|
+| **Chrome/Edge web content** | CDP tools (`connect_browser`, `get_browser_elements`) |
+| **Native Windows apps** | UI Automation (`click_element`, `find_element`) |
+| **Browser without CDP** | OCR (`click_text`, `find_text_on_screen`) |
+| **Any visible text** | OCR tools |
+| **Image/icon matching** | Vision tools |
 
 ## Requirements
 
 - Windows 10/11
 - Python 3.10+
+- Chrome/Edge for CDP features (optional)
 - No admin rights needed
 
 ## Dependencies
@@ -157,6 +194,10 @@ Core:
 - `pynput` - Input simulation
 - `pywin32` - Windows API
 
+Browser CDP (NEW!):
+- `websockets` - WebSocket client for CDP
+- `aiohttp` - HTTP client for CDP
+
 OCR:
 - `winrt-*` - Windows Runtime OCR (built-in to Windows)
 
@@ -166,21 +207,44 @@ Vision:
 
 ## Troubleshooting
 
+### Browser CDP not connecting
+- Make sure Chrome is started with `--remote-debugging-port=9222`
+- Check if port 9222 is available: `netstat -an | find "9222"`
+- Try with a clean profile: `chrome.exe --remote-debugging-port=9222 --user-data-dir=C:\temp\chrome-debug`
+
+### get_browser_elements returns empty
+- Page might still be loading - wait a moment
+- Some elements might be in iframes (not supported yet)
+- Check if the page uses Shadow DOM (limited support)
+
 ### OCR not finding text
 - Ensure text is clearly visible (not cut off, not too small)
 - Try `get_screen_text()` to see what OCR detects
 - Increase font size in target application
 
-### click_element not working
-- Check if target is a browser (use `click_text` instead)
-- Use `get_ui_tree()` to see available elements
-- Some custom controls don't expose UI Automation
-
-### Window bounds showing 0,0,0,0
-- Fixed in v0.2! Now uses win32gui for accurate bounds
-- Restart Claude Code to reload the MCP server
+### click_element not working in browser
+- Use CDP tools for browsers! (`click_browser_element`)
+- UI Automation can't see browser internal content
 
 ### Performance tips
-- Use `region` parameter to limit search area
-- OCR is faster on smaller regions
-- `wait_for_screen_change` is more efficient than polling screenshots
+- CDP is fastest for browsers - use it when possible!
+- Use `region` parameter for OCR to limit search area
+- `wait_for_screen_change` is more efficient than polling
+
+## Changelog
+
+### v0.3.0 - Browser CDP Support
+- NEW: Full Chrome DevTools Protocol integration
+- NEW: `connect_browser` - connect to Chrome
+- NEW: `get_browser_elements` - get all interactive elements
+- NEW: `click_browser_element` - click by text/role/selector
+- NEW: `type_in_browser` - type into browser elements
+- NEW: `execute_browser_js` - run JavaScript
+- NEW: `get_page_blueprint` - extract page for cloning
+- NEW: `browser_navigate` - navigate to URL
+- NEW: `wait_for_browser_element` - wait for elements
+
+### v0.2.0 - OCR & Vision
+- Added OCR tools for browser text interaction
+- Added vision tools for template matching
+- Improved window bounds detection

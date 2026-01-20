@@ -4,15 +4,15 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pc-control-mcp"
-version = "0.2.0"
-description = "Universal MCP server for intelligent PC control - UI Automation, OCR, Vision"
+version = "0.3.0"
+description = "Universal MCP server for intelligent PC control - UI Automation, OCR, Vision, and Browser CDP"
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}
 authors = [
     {name = "Senthil", email = "senthilomg1@gmail.com"}
 ]
-keywords = ["mcp", "automation", "ui-automation", "pc-control", "ocr", "screen-control", "ai-agent"]
+keywords = ["mcp", "automation", "ui-automation", "pc-control", "ocr", "screen-control", "ai-agent", "browser-automation", "cdp", "chrome-devtools"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
@@ -30,6 +30,8 @@ dependencies = [
     "pynput>=1.7.6",
     "Pillow>=10.0.0",
     "anyio>=4.0.0",
+    "websockets>=12.0",
+    "aiohttp>=3.9.0",
 ]
 
 [project.optional-dependencies]
